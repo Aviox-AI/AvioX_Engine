@@ -4,7 +4,6 @@ from openai import OpenAI
 import json
 
 # --- 1. THE SAFETY SWITCH ---
-# We use a more precise way to load secrets to prevent the "Empty Key" error.
 try:
     AMADEUS_KEY = st.secrets["AMADEUS_KEY"]
     AMADEUS_SECRET = st.secrets["AMADEUS_SECRET"]
@@ -29,14 +28,19 @@ st.markdown("""
         color: #020617; 
         font-weight: bold; 
         border-radius: 10px; 
-        width: 100%;
     }
     .flight-card {
         background-color: #1e293b;
         padding: 20px;
         border-radius: 15px;
         border: 1px solid #334155;
-        margin-bottom: 10px;
+        margin-bottom: 20px;
+        color: white;
+    }
+    .airline-logo {
+        border-radius: 8px;
+        background: white;
+        padding: 5px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -85,29 +89,40 @@ if st.button("Analyze & Search"):
                     st.markdown("### ✈️ Top Flight Results")
                     
                     for flight in response.data[:5]:
+                        # Extracting core details
                         price = flight['price']['total']
                         currency = flight['price']['currency']
                         airline = flight['validatingAirlineCodes'][0]
+                        itinerary = flight['itineraries'][0]
                         
-                        # --- 5. THE PRO FLIGHT CARDS ---
-                        with st.container():
-                            col1, col2, col3 = st.columns([1, 2, 1])
-                            
-                            with col1:
-                                st.write(f"**{airline}**")
-                                st.caption("Airline")
-                                
-                            with col2:
-                                st.write("Standard Economy")
-                                st.caption("Best Available Fare")
-                                
-                            with col3:
-                                st.metric(label="Total", value=f"{price} {currency}")
-                                # Key uses flight ID to stay unique
-                                if st.button(f"Select", key=flight['id']):
-                                    st.success(f"Selected {airline}!")
+                        # Formatting Times and Duration
+                        dep_time = itinerary['segments'][0]['departure']['at'][11:16]
+                        arr_time = itinerary['segments'][-1]['arrival']['at'][11:16]
+                        duration = itinerary['duration'][2:].lower().replace('h', 'h ').replace('m', 'm')
 
-                            st.divider() 
+                        # --- 5. THE NEW VISUAL FLIGHT CARDS ---
+                        st.markdown(f"""
+                            <div class="flight-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="flex: 1;">
+                                        <img class="airline-logo" src="https://img.daisycon.io/v1/check/airline/?code={airline}" width="50">
+                                        <p style="margin: 5px 0 0 0; color: #94a3b8; font-size: 0.8rem;">{airline}</p>
+                                    </div>
+                                    <div style="flex: 2; text-align: center;">
+                                        <h2 style="margin: 0; font-size: 1.5rem;">{dep_time} ➔ {arr_time}</h2>
+                                        <p style="margin: 0; color: #22d3ee;">{duration} | Non-stop</p>
+                                    </div>
+                                    <div style="flex: 1; text-align: right;">
+                                        <h3 style="margin: 0; color: white;">{price} {currency}</h3>
+                                        <p style="margin: 0; font-size: 0.7rem; color: #94a3b8;">per adult</p>
+                                    </div>
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Streamlit Button for functionality
+                        if st.button(f"Select this {airline} flight", key=f"btn_{flight['id']}"):
+                            st.success(f"Selected flight for {price} {currency}!")
                 else:
                     st.error("No flights found. Try a different date or city!")
 
