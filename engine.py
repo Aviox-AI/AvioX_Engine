@@ -81,7 +81,7 @@ if st.button("Analyze & Search"):
                     originLocationCode=data['origin'],
                     destinationLocationCode=data['destination'],
                     departureDate=data['date'],
-                    adults=1
+                    adults=1,
                     max=20 # Tells Amadeus to send up to 20 flights
                 )
 
@@ -129,4 +129,5 @@ if st.button("Analyze & Search"):
 
             except Exception as e:
                 st.error(f"Engine Error: {e}")
+
 
