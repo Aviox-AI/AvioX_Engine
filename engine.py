@@ -74,16 +74,36 @@ if st.button("Analyze & Search"):
 
                 if response.data:
                     st.balloons()
-                    cheapest = response.data[0]
-                    price = cheapest['price']['total']
-                    currency = cheapest['price']['currency']
+                    st.markdown("### ✈️ Top Flight Results")
                     
-                    st.success(f"✅ Found it! Best total price:")
-                    st.metric(label="Flight Price", value=f"{price} {currency}")
-                    st.caption(f"Validating Airline: {cheapest['validatingAirlineCodes'][0]}")
+                    # We loop through the first 5 results to create cards
+                    for flight in response.data[:5]:
+                        price = flight['price']['total']
+                        currency = flight['price']['currency']
+                        airline = flight['validatingAirlineCodes'][0]
+                        
+                        # Visual "Card" Container
+                        with st.container():
+                            # Create 3 columns for a professional layout
+                            col1, col2, col3 = st.columns([1, 2, 1])
+                            
+                            with col1:
+                                st.write(f"**{airline}**")
+                                st.caption("Carrier")
+                                
+                            with col2:
+                                st.write("Standard Economy")
+                                st.caption("Direct or 1-Stop")
+                                
+                            with col3:
+                                st.metric(label="Total", value=f"{price} {currency}")
+                                # A button for each flight
+                                if st.button(f"Select Flight", key=flight['id']):
+                                    st.info(f"Booking {airline} to {data['destination']}...")
+
+                            st.divider() # Adds a clean grey line between results
                 else:
-                    st.error("No flights found for those specific cities or dates.")
+                    st.error("No flights found. Try a different date or city!")
 
             except Exception as e:
-                # This helps us see if the error is from AI or Amadeus
                 st.error(f"Engine Error: {e}")
