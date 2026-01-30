@@ -77,13 +77,12 @@ if st.button("Analyze & Search"):
                 st.info(f"Searching: {data['origin']} to {data['destination']} on {data['date']}")
 
                 # --- 4. THE FLIGHT ENGINE (AMADEUS) ---
-               response = amadeus.shopping.flight_offers_search.get(
-    originLocationCode=data['origin'],
-    destinationLocationCode=data['destination'],
-    departureDate=data['date'],
-    adults=1,
-    max=20  # Tells Amadeus to send up to 20 flights
-)
+                response = amadeus.shopping.flight_offers_search.get(
+                    originLocationCode=data['origin'],
+                    destinationLocationCode=data['destination'],
+                    departureDate=data['date'],
+                    adults=1
+                )
 
                 if response.data:
                     st.balloons()
@@ -106,11 +105,7 @@ if st.button("Analyze & Search"):
                             <div class="flight-card">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <div style="flex: 1;">
-                                        <img class="airline-logo" 
-     src="https://assets.duffel.com/img/airlines/for-light-background/full-color-lockup/{airline.upper()}.svg" 
-     width="100" 
-     style="background: white; padding: 5px; border-radius: 5px;" 
-     onerror="this.src='https://img.icons8.com/clouds/100/airplane-take-off.png'">
+                                        <img class="airline-logo" src="https://img.daisycon.io/v1/check/airline/?code=" width="50">
                                         <p style="margin: 5px 0 0 0; color: #94a3b8; font-size: 0.8rem;">{airline}</p>
                                     </div>
                                     <div style="flex: 2; text-align: center;">
@@ -133,6 +128,3 @@ if st.button("Analyze & Search"):
 
             except Exception as e:
                 st.error(f"Engine Error: {e}")
-
-
-
