@@ -105,7 +105,7 @@ if st.button("Analyze & Search"):
                             <div class="flight-card">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <div style="flex: 1;">
-                                        <img class="airline-logo" src="https://img.daisycon.io/v1/check/airline/?code={airline}" width="50">
+                                        <img class="airline-logo" src="https://img.daisycon.io/v1/check/airline/?code=" width="50">
                                         <p style="margin: 5px 0 0 0; color: #94a3b8; font-size: 0.8rem;">{airline}</p>
                                     </div>
                                     <div style="flex: 2; text-align: center;">
