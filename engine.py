@@ -2,19 +2,16 @@ import streamlit as st
 from amadeus import Client
 from openai import OpenAI
 import json
-from datetime import datetime
 
 # --- 1. THE SAFETY SWITCH ---
-# This looks for keys in the "Vault" first. If not found, it uses your local testing keys.
+# We use a more precise way to load secrets to prevent the "Empty Key" error.
 try:
     AMADEUS_KEY = st.secrets["AMADEUS_KEY"]
     AMADEUS_SECRET = st.secrets["AMADEUS_SECRET"]
     OPENAI_KEY = st.secrets["OPENAI_API_KEY"]
-except:
-    # PASTE YOUR REAL KEYS HERE FOR LOCAL TESTING
-    AMADEUS_KEY = ""
-    AMADEUS_SECRET = ""
-    OPENAI_KEY = ""
+except Exception as e:
+    st.error(f"❌ Setup Error: Missing keys in Streamlit Secrets. ({e})")
+    st.stop()
 
 # Initialize Clients
 amadeus = Client(client_id=AMADEUS_KEY, client_secret=AMADEUS_SECRET)
@@ -23,10 +20,24 @@ ai_client = OpenAI(api_key=OPENAI_KEY)
 # --- 2. APP INTERFACE ---
 st.set_page_config(page_title="AvioX AI", page_icon="✈️", layout="centered")
 
+# Custom Styling
 st.markdown("""
     <style>
     .main { background-color: #020617; }
-    .stButton>button { background-color: #22d3ee; color: #020617; font-weight: bold; border-radius: 10px; }
+    .stButton>button { 
+        background-color: #22d3ee; 
+        color: #020617; 
+        font-weight: bold; 
+        border-radius: 10px; 
+        width: 100%;
+    }
+    .flight-card {
+        background-color: #1e293b;
+        padding: 20px;
+        border-radius: 15px;
+        border: 1px solid #334155;
+        margin-bottom: 10px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -41,15 +52,14 @@ if st.button("Analyze & Search"):
     else:
         with st.spinner("AI is converting your request to flight data..."):
             try:
-                # --- 3. THE AI BRAIN (FORCING CORRECT FORMATS) ---
-                current_date = "2026-01-30" # Today's date for AI context
+                # --- 3. THE AI BRAIN ---
+                current_date = "2026-01-30" 
                 prompt = f"""
                 Convert this request to JSON: '{user_query}'
                 Rules:
-                1. 'origin' and 'destination' must be 3-letter IATA codes (e.g. NYC, LON).
+                1. 'origin' and 'destination' must be 3-letter IATA codes.
                 2. 'date' must be YYYY-MM-DD. 
-                3. If no year is mentioned, use 2026.
-                4. Today is {current_date}.
+                3. Today is {current_date}.
                 Return ONLY JSON: {{"origin": "CODE", "destination": "CODE", "date": "YYYY-MM-DD"}}
                 """
                 
@@ -60,8 +70,6 @@ if st.button("Analyze & Search"):
                 )
                 
                 data = json.loads(ai_response.choices[0].message.content)
-                
-                # Show the user what the AI understood
                 st.info(f"Searching: {data['origin']} to {data['destination']} on {data['date']}")
 
                 # --- 4. THE FLIGHT ENGINE (AMADEUS) ---
@@ -76,32 +84,30 @@ if st.button("Analyze & Search"):
                     st.balloons()
                     st.markdown("### ✈️ Top Flight Results")
                     
-                    # We loop through the first 5 results to create cards
                     for flight in response.data[:5]:
                         price = flight['price']['total']
                         currency = flight['price']['currency']
                         airline = flight['validatingAirlineCodes'][0]
                         
-                        # Visual "Card" Container
+                        # --- 5. THE PRO FLIGHT CARDS ---
                         with st.container():
-                            # Create 3 columns for a professional layout
                             col1, col2, col3 = st.columns([1, 2, 1])
                             
                             with col1:
                                 st.write(f"**{airline}**")
-                                st.caption("Carrier")
+                                st.caption("Airline")
                                 
                             with col2:
                                 st.write("Standard Economy")
-                                st.caption("Direct or 1-Stop")
+                                st.caption("Best Available Fare")
                                 
                             with col3:
                                 st.metric(label="Total", value=f"{price} {currency}")
-                                # A button for each flight
-                                if st.button(f"Select Flight", key=flight['id']):
-                                    st.info(f"Booking {airline} to {data['destination']}...")
+                                # Key uses flight ID to stay unique
+                                if st.button(f"Select", key=flight['id']):
+                                    st.success(f"Selected {airline}!")
 
-                            st.divider() # Adds a clean grey line between results
+                            st.divider() 
                 else:
                     st.error("No flights found. Try a different date or city!")
 
