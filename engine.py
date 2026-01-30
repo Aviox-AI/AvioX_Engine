@@ -172,11 +172,46 @@ if st.button("Analyze & Search"):
                     max=20 # Tells Amadeus to send up to 20 flights
                 )
 
-                if response.data:
+               if response.data:
                     st.balloons()
-                    st.markdown("### ✈️ Top Flight Results")
+                    st.markdown(f"### ✈️ Found {len(response.data)} Flights")
                     
-                    for flight in response.data: # <--- REMOVE the [:5] to show everything Amadeus sent:
+                    # --- THIS IS THE NEW WRAPPER ---
+                    with st.container(height=500): 
+                        for flight in response.data:  # Notice the [:5] is gone!
+                            # Extracting core details
+                            price = flight['price']['total']
+                            currency = flight['price']['currency']
+                            airline = flight['validatingAirlineCodes'][0]
+                            itinerary = flight['itineraries'][0]
+                            
+                            # Formatting Times and Duration
+                            dep_time = itinerary['segments'][0]['departure']['at'][11:16]
+                            arr_time = itinerary['segments'][-1]['arrival']['at'][11:16]
+                            duration = itinerary['duration'][2:].lower().replace('h', 'h ').replace('m', 'm')
+
+                            # Your Visual Flight Card HTML
+                            st.markdown(f"""
+                                <div class="flight-card">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div style="flex: 1;">
+                                            <img class="airline-logo" src="https://assets.duffel.com/img/airlines/for-light-background/full-color-lockup/{airline.upper()}.svg" width="50" onerror="this.src='https://img.icons8.com/clouds/100/airplane-take-off.png'">
+                                            <p style="margin: 5px 0 0 0; color: #94a3b8; font-size: 0.8rem;">{airline}</p>
+                                        </div>
+                                        <div style="flex: 2; text-align: center;">
+                                            <h2 style="margin: 0; font-size: 1.5rem;">{dep_time} ➔ {arr_time}</h2>
+                                            <p style="margin: 0; color: #22d3ee;">{duration} | Non-stop</p>
+                                        </div>
+                                        <div style="flex: 1; text-align: right;">
+                                            <h3 style="margin: 0; color: white;">{price} {currency}</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # Streamlit Button
+                            if st.button(f"Select {airline} flight", key=f"btn_{flight['id']}"):
+                                st.success(f"Selected flight for {price} {currency}!")
                         # Extracting core details
                         price = flight['price']['total']
                         currency = flight['price']['currency']
@@ -269,6 +304,7 @@ if st.button("Analyze & Search"):
 
             except Exception as e:
                 st.error(f"Engine Error: {e}")
+
 
 
 
