@@ -77,12 +77,13 @@ if st.button("Analyze & Search"):
                 st.info(f"Searching: {data['origin']} to {data['destination']} on {data['date']}")
 
                 # --- 4. THE FLIGHT ENGINE (AMADEUS) ---
-                response = amadeus.shopping.flight_offers_search.get(
-                    originLocationCode=data['origin'],
-                    destinationLocationCode=data['destination'],
-                    departureDate=data['date'],
-                    adults=1
-                )
+               response = amadeus.shopping.flight_offers_search.get(
+    originLocationCode=data['origin'],
+    destinationLocationCode=data['destination'],
+    departureDate=data['date'],
+    adults=1,
+    max=20  # Tells Amadeus to send up to 20 flights
+)
 
                 if response.data:
                     st.balloons()
@@ -132,5 +133,6 @@ if st.button("Analyze & Search"):
 
             except Exception as e:
                 st.error(f"Engine Error: {e}")
+
 
 
