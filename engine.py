@@ -89,7 +89,7 @@ if st.button("Analyze & Search"):
                     st.balloons()
                     st.markdown("### ✈️ Top Flight Results")
                     
-                    for flight in response.data[:5]:
+                    for flight in response.data: # <--- REMOVE the [:5] to show everything Amadeus sent:
                         # Extracting core details
                         price = flight['price']['total']
                         currency = flight['price']['currency']
@@ -133,6 +133,7 @@ if st.button("Analyze & Search"):
 
             except Exception as e:
                 st.error(f"Engine Error: {e}")
+
 
 
 
