@@ -46,8 +46,30 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("✈️ AvioX Flight Search")
-st.write("Talk to your travel agent. Type like a human.")
+# Centered Header with a cleaner look
+st.markdown("""
+    <div class="flight-card" style="box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: transform 0.2s;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: flex-start;">
+            <img class="airline-logo" src="https://assets.duffel.com/img/airlines/for-light-background/full-color-lockup/{airline.upper()}.svg" width="100" style="background: white; padding: 8px; border-radius: 8px;" onerror="this.src='https://img.icons8.com/clouds/100/airplane-take-off.png'">
+            <span style="margin-top: 8px; font-weight: bold; letter-spacing: 1px; color: #38bdf8;">{airline}</span>
+        </div>
+
+        <div style="flex: 2; text-align: center;">
+            <div style="font-size: 1.8rem; font-weight: 700; color: #f8fafc;">
+                {dep_time} <span style="color: #22d3ee; font-size: 1.2rem;">✈</span> {arr_time}
+            </div>
+            <div style="background: #334155; display: inline-block; padding: 2px 12px; border-radius: 20px; font-size: 0.8rem; color: #cbd5e1; margin-top: 5px;">
+                {duration} | Direct
+            </div>
+        </div>
+
+        <div style="flex: 1; text-align: right;">
+            <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase;">Best Price</div>
+            <div style="font-size: 2rem; font-weight: 800; color: #22d3ee;">{price} <span style="font-size: 1rem;">{currency}</span></div>
+        </div>
+    </div>
+</div>
 
 user_query = st.text_input("Where to?", placeholder="e.g. London to Tokyo next August")
 
@@ -136,4 +158,5 @@ if st.button("Analyze & Search"):
                         st.error(f"Engine Error: {e}")
                 else:
                     st.error(f"System Error: {e}")
+
 
