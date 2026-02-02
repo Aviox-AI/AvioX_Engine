@@ -1,3 +1,4 @@
+from datetime import datetime
 import streamlit as st
 from amadeus import Client
 from openai import OpenAI
@@ -57,7 +58,8 @@ if st.button("Analyze & Search"):
         with st.spinner("AI is converting your request to flight data..."):
             try:
                 # --- 3. THE AI BRAIN ---
-                current_date = "2026-01-30" 
+                # This gets the actual date from the server clock
+                current_date = datetime.now().strftime("%Y-%m-%d") 
                 prompt = f"""
                 Convert this request to JSON: '{user_query}'
                 Rules:
@@ -134,3 +136,4 @@ if st.button("Analyze & Search"):
                         st.error(f"Engine Error: {e}")
                 else:
                     st.error(f"System Error: {e}")
+
