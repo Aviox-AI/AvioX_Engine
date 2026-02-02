@@ -3,6 +3,7 @@ from amadeus import Client, ResponseError
 from openai import OpenAI
 import json
 import re
+import textwrap  # <--- THIS IS THE KEY FIX
 from datetime import datetime
 
 # --- 1. CONFIGURATION ---
@@ -30,7 +31,6 @@ st.markdown("""
     .stApp { background-color: #F8FAFC; font-family: 'Plus Jakarta Sans', sans-serif; }
 
     /* SEARCH BAR ALIGNMENT */
-    /* Forces columns to align at the bottom so input & button match height */
     [data-testid="column"] {
         display: flex;
         flex-direction: column;
@@ -116,7 +116,6 @@ st.markdown("""
 
 # --- 3. HELPER FUNCTIONS ---
 def get_clean_json(raw_text):
-    """Robust JSON extractor"""
     try:
         match = re.search(r'\{.*\}', raw_text, re.DOTALL)
         return json.loads(match.group()) if match else None
@@ -198,7 +197,7 @@ if 'flights' in st.session_state and st.session_state.flights:
     min_price = float(flights[0]['price']['total'])
 
     for idx, flight in enumerate(flights):
-        # 1. PREPARE PYTHON VARIABLES (Do not put logic in HTML)
+        # 1. PREPARE VARIABLES
         price = float(flight['price']['total'])
         currency = flight['price']['currency']
         airline = flight['validatingAirlineCodes'][0]
@@ -215,7 +214,7 @@ if 'flights' in st.session_state and st.session_state.flights:
         
         stops = len(segs) - 1
         
-        # 2. GENERATE BADGE HTML IN PYTHON
+        # 2. GENERATE BADGE STRINGS
         if stops == 0:
             badge_html = "<span style='background:#DCFCE7; color:#166534; padding:4px 8px; border-radius:4px; font-weight:700; font-size:0.75rem;'>DIRECT</span>"
         else:
@@ -227,8 +226,8 @@ if 'flights' in st.session_state and st.session_state.flights:
 
         logo_url = f"https://assets.duffel.com/img/airlines/for-light-background/full-color-lockup/{airline}.svg"
 
-        # 3. PURE HTML STRING (No complex logic inside)
-        card_html = f"""
+        # 3. HTML GENERATION (With dedent to fix the raw html bug)
+        card_html = textwrap.dedent(f"""
         <div class="flight-card">
             <div class="card-content">
                 <div style="flex:1;">
@@ -261,9 +260,9 @@ if 'flights' in st.session_state and st.session_state.flights:
                 <div style="color:#0062E3; font-weight:700;">Flight Details &rarr;</div>
             </div>
         </div>
-        """
+        """)
 
-        # 4. RENDER
+        # 4. RENDER WITH DEDENT
         st.markdown(card_html, unsafe_allow_html=True)
         
         if st.button(f"Select Flight {idx}", key=f"btn_{idx}", use_container_width=True):
