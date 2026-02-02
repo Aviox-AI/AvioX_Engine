@@ -73,7 +73,8 @@ if st.button("Analyze & Search"):
                     temperature=0
                 )
                 
-                data = json.loads(ai_response.choices[0].message.content)
+                ai_content = ai_response.choices[0].message.content
+                data = json.loads(ai_content)
                 st.info(f"Searching: {data['origin']} to {data['destination']} on {data['date']}")
 
                 # --- 4. THE FLIGHT ENGINE (AMADEUS) ---
@@ -81,69 +82,55 @@ if st.button("Analyze & Search"):
                     originLocationCode=data['origin'],
                     destinationLocationCode=data['destination'],
                     departureDate=data['date'],
-                    adults=1
+                    adults=1,
+                    max=20
                 )
 
                 if response.data:
                     st.balloons()
-                    st.markdown("### ✈️ Top Flight Results")
+                    st.markdown(f"### ✈️ Found {len(response.data)} Flights")
                     
-                    for flight in response.data[:5]:
-                        # Extracting core details
-                        price = flight['price']['total']
-                        currency = flight['price']['currency']
-                        airline = flight['validatingAirlineCodes'][0]
-                        itinerary = flight['itineraries'][0]
-                        
-                        # Formatting Times and Duration
-                        dep_time = itinerary['segments'][0]['departure']['at'][11:16]
-                        arr_time = itinerary['segments'][-1]['arrival']['at'][11:16]
-                        duration = itinerary['duration'][2:].lower().replace('h', 'h ').replace('m', 'm')
+                    # --- 5. SCROLLABLE RESULTS ---
+                    with st.container(height=500):
+                        for flight in response.data:
+                            price = flight['price']['total']
+                            currency = flight['price']['currency']
+                            airline = flight['validatingAirlineCodes'][0]
+                            itinerary = flight['itineraries'][0]
+                            
+                            dep_time = itinerary['segments'][0]['departure']['at'][11:16]
+                            arr_time = itinerary['segments'][-1]['arrival']['at'][11:16]
+                            duration = itinerary['duration'][2:].lower().replace('h', 'h ').replace('m', 'm')
 
-                        # --- 5. THE NEW VISUAL FLIGHT CARDS ---
-                        st.markdown(f"""
-                            <div class="flight-card">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div style="flex: 1;">
-                                        <img class="airline-logo" src="https://img.daisycon.io/v1/check/airline/?code=" width="50">
-                                        <p style="margin: 5px 0 0 0; color: #94a3b8; font-size: 0.8rem;">{airline}</p>
-                                    </div>
-                                    <div style="flex: 2; text-align: center;">
-                                        <h2 style="margin: 0; font-size: 1.5rem;">{dep_time} ➔ {arr_time}</h2>
-                                        <p style="margin: 0; color: #22d3ee;">{duration} | Non-stop</p>
-                                    </div>
-                                    <div style="flex: 1; text-align: right;">
-                                        <h3 style="margin: 0; color: white;">{price} {currency}</h3>
-                                        <p style="margin: 0; font-size: 0.7rem; color: #94a3b8;">per adult</p>
+                            st.markdown(f"""
+                                <div class="flight-card">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div style="flex: 1;">
+                                            <img class="airline-logo" src="https://assets.duffel.com/img/airlines/for-light-background/full-color-lockup/{airline.upper()}.svg" width="80" onerror="this.src='https://img.icons8.com/clouds/100/airplane-take-off.png'">
+                                            <p style="margin: 5px 0 0 0; color: #94a3b8; font-size: 0.8rem;">{airline}</p>
+                                        </div>
+                                        <div style="flex: 2; text-align: center;">
+                                            <h2 style="margin: 0; font-size: 1.5rem;">{dep_time} ➔ {arr_time}</h2>
+                                            <p style="margin: 0; color: #22d3ee;">{duration} | Non-stop</p>
+                                        </div>
+                                        <div style="flex: 1; text-align: right;">
+                                            <h3 style="margin: 0; color: white;">{price} {currency}</h3>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # Streamlit Button for functionality
-                        if st.button(f"Select this {airline} flight", key=f"btn_{flight['id']}"):
-                            st.success(f"Selected flight for {price} {currency}!")
+                            """, unsafe_allow_html=True)
+                            
+                            if st.button(f"Select {airline} flight", key=f"btn_{flight['id']}"):
+                                st.success(f"Selected flight for {price} {currency}!")
                 else:
                     st.error("No flights found. Try a different date or city!")
 
-            # ... (This is where your container and loop end) ...
-                
             except Exception as e:
-                # This handles Amadeus or AI conversion errors
                 if hasattr(e, 'response') and e.response:
                     try:
-                        # Try to get the specific reason from Amadeus
                         error_detail = e.response.result['errors'][0]['detail']
                         st.error(f"Amadeus Error: {error_detail}")
                     except:
                         st.error(f"Engine Error: {e}")
                 else:
                     st.error(f"System Error: {e}")
-
-        except Exception as outer_e:
-            # This handles any errors outside the main flight search logic
-            st.error(f"Critical Error: {outer_e}")
-
-
-
-
