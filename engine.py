@@ -113,42 +113,67 @@ st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("---")
 
 # --- 4. SEARCH & FILTER LOGIC ---
-if user_query and search_btn:
-    with st.spinner("Searching..."):
-        # ... (AI prompt stays the same) ...
-        # ... (Inside your Amadeus call, use this:)
-        
-        origin_code = data['origin'].upper() # <--- FORCES UPPERCASE
-        dest_code = data['destination'].upper()
-        
-        response = amadeus.shopping.flight_offers_search.get(
-            originLocationCode=origin_code,
-            destinationLocationCode=dest_code,
-            departureDate=data['date'],
-            adults=1, max=15
-        )
+if user_query:
+    # 1. Trigger the AI and Amadeus fetch ONLY when button is pressed
+    if search_btn:
+        with st.spinner("Analyzing route and fetching prices..."):
+            try:
+                # Use simulated date for Test API
+                sim_date = "2026-02-02"
+                prompt = f"Convert to JSON: '{user_query}'. Return ONLY: {{\"origin\": \"CODE\", \"destination\": \"CODE\", \"date\": \"YYYY-MM-DD\"}}"
+                
+                ai_res = ai_client.chat.completions.create(
+                    model="gpt-3.5-turbo", 
+                    messages=[{"role": "user", "content": prompt}], 
+                    temperature=0
+                )
+                
+                # Save data to session state so it survives refreshes
+                st.session_state.search_data = json.loads(ai_res.choices[0].message.content)
+                
+                # Fetch flights
+                origin_code = st.session_state.search_data['origin'].upper()
+                dest_code = st.session_state.search_data['destination'].upper()
+                
+                resp = amadeus.shopping.flight_offers_search.get(
+                    originLocationCode=origin_code,
+                    destinationLocationCode=dest_code,
+                    departureDate=st.session_state.search_data['date'],
+                    adults=1, 
+                    max=15
+                )
+                st.session_state.flights = resp.data
+                
+            except Exception as e:
+                st.error(f"Engine Error: {e}")
 
-    if 'flights' in st.session_state:
+    # 2. Display results if they exist in memory
+    if 'flights' in st.session_state and 'search_data' in st.session_state:
         # --- REFINED FILTER BAR ---
-        # Centering the filter bar on a lighter background
         with st.container():
             f1, f2, f3, f4 = st.columns([1, 1, 1, 2])
             with f1:
-                sort_opt = st.selectbox("Sort by", ["Cheapest", "Highest Price"], label_visibility="visible")
+                sort_opt = st.selectbox("Sort by", ["Cheapest", "Highest Price"])
             with f2:
-                stops_opt = st.selectbox("Stops", ["All", "Non-stop Only"], label_visibility="visible")
+                stops_opt = st.selectbox("Stops", ["All", "Non-stop Only"])
             with f3:
-                # Placeholder for class/airline
                 st.selectbox("Cabin", ["Economy", "Premium", "Business"], disabled=True)
             with f4:
-                st.markdown(f"<p style='padding-top:35px; color:#68697f;'>Results for <b>{st.session_state.search_data['origin']} to {st.session_state.search_data['destination']}</b></p>", unsafe_allow_html=True)
+                # Use session_state to safely display origin/destination
+                origin_disp = st.session_state.search_data['origin'].upper()
+                dest_disp = st.session_state.search_data['destination'].upper()
+                st.markdown(f"<p style='padding-top:35px; color:#68697f;'>Results for <b>{origin_disp} to {dest_disp}</b></p>", unsafe_allow_html=True)
 
-        # --- DATA PROCESSING ---
+        # --- DATA PROCESSING (Sorting & Filtering) ---
         display_flights = st.session_state.flights
+        
+        # Filter by stops
         if stops_opt == "Non-stop Only":
             display_flights = [f for f in display_flights if len(f['itineraries'][0]['segments']) == 1]
         
-        display_flights = sorted(display_flights, key=lambda x: float(x['price']['total']), reverse=(sort_opt == "Highest Price"))
+        # Sort by price
+        is_reverse = (sort_opt == "Highest Price")
+        display_flights = sorted(display_flights, key=lambda x: float(x['price']['total']), reverse=is_reverse)
 
         # --- 5. SKYSCANNER-STYLE RESULTS ---
         for flight in display_flights:
@@ -172,7 +197,7 @@ if user_query and search_btn:
                         <div style="flex: 3; display: flex; justify-content: space-around; align-items: center; border-left: 1px solid #eee; border-right: 1px solid #eee; margin: 0 40px;">
                             <div style="text-align: center;">
                                 <div style="font-size: 1.4rem; font-weight: 700;">{dep}</div>
-                                <div style="color: #68697f; font-size: 0.9rem;">{st.session_state.search_data['origin']}</div>
+                                <div style="color: #68697f; font-size: 0.9rem;">{st.session_state.search_data['origin'].upper()}</div>
                             </div>
                             <div style="text-align: center; color: #68697f; min-width: 100px;">
                                 <div style="font-size: 0.8rem;">{dur}</div>
@@ -183,7 +208,7 @@ if user_query and search_btn:
                             </div>
                             <div style="text-align: center;">
                                 <div style="font-size: 1.4rem; font-weight: 700;">{arr}</div>
-                                <div style="color: #68697f; font-size: 0.9rem;">{st.session_state.search_data['destination']}</div>
+                                <div style="color: #68697f; font-size: 0.9rem;">{st.session_state.search_data['destination'].upper()}</div>
                             </div>
                         </div>
                         <div style="flex: 1; text-align: right;">
@@ -198,9 +223,5 @@ if user_query and search_btn:
                 </div>
             """, unsafe_allow_html=True)
             
-            # The "Select" button now looks more integrated
             if st.button(f"Select Flight {flight['id']}", key=f"btn_{flight['id']}", use_container_width=True):
-                st.success(f"Proceeding with {airline} at {price} {curr}")
-
-
-
+                st.success(f"Confirming {airline} flight for {price} {curr}...")
