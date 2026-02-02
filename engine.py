@@ -13,7 +13,12 @@ except Exception as e:
     st.error(f"❌ Setup Error: Missing keys. ({e})")
     st.stop()
 
-amadeus = Client(client_id=AMADEUS_KEY, client_secret=AMADEUS_SECRET)
+# Cache the client to prevent "Stale Token" errors
+@st.cache_resource
+def get_amadeus_client():
+    return Client(client_id=AMADEUS_KEY, client_secret=AMADEUS_SECRET)
+
+amadeus = get_amadeus_client()
 ai_client = OpenAI(api_key=OPENAI_KEY)
 
 # --- 2. PAGE CONFIG & SKYSCANNER THEME ---
@@ -21,43 +26,31 @@ st.set_page_config(page_title="AvioX AI", page_icon="✈️", layout="wide")
 
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Relative:wght@400;700&family=Inter:wght@400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
     
-    /* Overall Background */
-    .stApp {
-        background-color: #f1f2f8; /* Light gray-blue background like Skyscanner */
-    }
+    .stApp { background-color: #f1f2f8; }
 
     /* Navbar Alignment */
-    .nav-container {
+    .nav-wrapper {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        padding: 10px 0;
-        margin-bottom: 20px;
+        gap: 20px;
+        padding: 15px 0;
     }
 
-    /* Modern Flight Card */
     .flight-card {
         background: white;
         border-radius: 8px;
         box-shadow: 0 1px 3px rgba(37,32,31,.3);
         margin-bottom: 12px;
         color: #25201f;
-        border: none;
     }
     
-    .card-body {
-        padding: 20px 30px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-
+    .card-body { padding: 20px 30px; display: flex; align-items: center; justify-content: space-between; }
     .card-footer {
         background: #fbfcfd;
-        border-top: 1px solid #ddd;
-        padding: 8px 30px;
+        border-top: 1px solid #eee;
+        padding: 10px 30px;
         display: flex;
         justify-content: space-between;
         font-size: 0.8rem;
@@ -65,61 +58,54 @@ st.markdown("""
         border-radius: 0 0 8px 8px;
     }
 
-    /* Skyscanner Blue Buttons */
     .stButton>button { 
         background-color: #0062E3 !important; 
         color: white !important; 
         font-weight: 700; 
         border-radius: 4px;
         border: none;
-        padding: 10px 20px;
-        transition: 0.2s;
-    }
-    .stButton>button:hover {
-        background-color: #004fb8 !important;
-    }
-
-    /* Input styling */
-    .stTextInput>div>div>input {
-        background-color: white !important;
-        border: 1px solid #ddd !important;
-        border-radius: 4px !important;
         height: 45px;
+    }
+    
+    /* Aligning the Input box height */
+    .stTextInput>div>div>input {
+        height: 45px !important;
+        border-radius: 4px !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. ALIGNED NAVBAR (Logo & Search) ---
-# We use a custom HTML container for perfect vertical centering
+# --- 3. ALIGNED NAVBAR ---
+# We use columns to force the logo and search bar onto one horizontal line
 nav_col1, nav_col2, nav_col3 = st.columns([1, 4, 1])
 
 with nav_col1:
-    # Adjusted logo size and vertical alignment
-    st.markdown("<h1 style='color: #0062E3; margin-top: 5px; font-size: 1.8rem; font-weight: 800;'>AvioX</h1>", unsafe_allow_html=True)
+    # This margin-top trick aligns the text perfectly with the input box
+    st.markdown("<h1 style='color: #0062E3; margin: 0; padding-top: 5px; font-size: 1.8rem; font-weight: 800;'>AvioX</h1>", unsafe_allow_html=True)
 
 with nav_col2:
-    # Search bar now sits on the same horizontal plane
-    user_query = st.text_input("", placeholder="Where to? (e.g. London to Paris)", label_visibility="collapsed")
+    user_query = st.text_input("", placeholder="Where to? (e.g., London to New York)", label_visibility="collapsed")
 
 with nav_col3:
     search_btn = st.button("Search", use_container_width=True)
 
+st.markdown("---")
+
 # --- 4. SEARCH & FILTER LOGIC ---
-if user_query:
-    if search_btn:
-        with st.spinner("Searching..."):
-            sim_date = "2026-02-02"
-            prompt = f"Convert to JSON: '{user_query}'. Return: {{\"origin\": \"CODE\", \"destination\": \"CODE\", \"date\": \"YYYY-MM-DD\"}}"
-            ai_res = ai_client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": prompt}], temperature=0)
-            st.session_state.search_data = json.loads(ai_res.choices[0].message.content)
-            
-            resp = amadeus.shopping.flight_offers_search.get(
-                originLocationCode=st.session_state.search_data['origin'],
-                destinationLocationCode=st.session_state.search_data['destination'],
-                departureDate=st.session_state.search_data['date'],
-                adults=1, max=15
-            )
-            st.session_state.flights = resp.data
+if user_query and search_btn:
+    with st.spinner("Searching..."):
+        # ... (AI prompt stays the same) ...
+        # ... (Inside your Amadeus call, use this:)
+        
+        origin_code = data['origin'].upper() # <--- FORCES UPPERCASE
+        dest_code = data['destination'].upper()
+        
+        response = amadeus.shopping.flight_offers_search.get(
+            originLocationCode=origin_code,
+            destinationLocationCode=dest_code,
+            departureDate=data['date'],
+            adults=1, max=15
+        )
 
     if 'flights' in st.session_state:
         # --- REFINED FILTER BAR ---
@@ -194,3 +180,4 @@ if user_query:
             # The "Select" button now looks more integrated
             if st.button(f"Select Flight {flight['id']}", key=f"btn_{flight['id']}", use_container_width=True):
                 st.success(f"Proceeding with {airline} at {price} {curr}")
+
