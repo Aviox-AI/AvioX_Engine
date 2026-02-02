@@ -75,33 +75,37 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. ALIGNED NAVBAR (Upsized Logo) ---
-# We adjust the column ratio from [1, 4, 1] to [1.5, 4, 1] to give the bigger logo more room
-nav_col1, nav_col2, nav_col3 = st.columns([1.5, 4, 1])
+# --- 3. ALIGNED NAVBAR (Centered & Larger) ---
+# We use [2, 5, 1.2] to give the logo a generous "cell" for centering
+nav_col1, nav_col2, nav_col3 = st.columns([2, 5, 1.2])
 
 with nav_col1:
-    # Font size increased to 2.5rem and padding adjusted for the larger scale
+    # This HTML uses flexbox to center the logo text in the gap
     st.markdown("""
-        <h1 style='color: #0062E3; 
-                   margin: 0; 
-                   padding-top: 0px; 
-                   font-size: 2.8rem; 
-                   font-weight: 900; 
-                   line-height: 1;
-                   letter-spacing: -1px;'>
-            AvioX
-        </h1>
+        <div style="display: flex; 
+                    justify-content: center; 
+                    align-items: center; 
+                    height: 65px; 
+                    width: 100%;">
+            <h1 style='color: #0062E3; 
+                       margin: 0; 
+                       font-size: 3.5rem; 
+                       font-weight: 900; 
+                       letter-spacing: -2px;
+                       line-height: 1;'>
+                Avio<span style='color: #25201f;'>X</span>
+            </h1>
+        </div>
     """, unsafe_allow_html=True)
 
 with nav_col2:
-    # We add a bit of top padding here to make the search bar stay centered 
-    # with the now-taller logo
-    st.markdown("<div style='padding-top: 10px;'>", unsafe_allow_html=True)
-    user_query = st.text_input("", placeholder="Where to? (e.g., London to New York)", label_visibility="collapsed")
+    # Adjusted padding to 15px to line up with the 3.5rem logo
+    st.markdown("<div style='padding-top: 15px;'>", unsafe_allow_html=True)
+    user_query = st.text_input("", placeholder="Where to?", label_visibility="collapsed")
     st.markdown("</div>", unsafe_allow_html=True)
 
 with nav_col3:
-    st.markdown("<div style='padding-top: 10px;'>", unsafe_allow_html=True)
+    st.markdown("<div style='padding-top: 15px;'>", unsafe_allow_html=True)
     search_btn = st.button("Search", use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -197,5 +201,6 @@ if user_query and search_btn:
             # The "Select" button now looks more integrated
             if st.button(f"Select Flight {flight['id']}", key=f"btn_{flight['id']}", use_container_width=True):
                 st.success(f"Proceeding with {airline} at {price} {curr}")
+
 
 
