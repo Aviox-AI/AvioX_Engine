@@ -127,5 +127,7 @@ if st.button("Analyze & Search"):
                     st.error("No flights found. Try a different date or city!")
 
             except Exception as e:
-                st.error(f"Engine Error: {e}")
+    # This will print the full technical error so we can read it
+    st.error(f"Engine Error: {type(e).__name__} - {e}")
             
+
