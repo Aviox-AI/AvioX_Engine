@@ -126,17 +126,24 @@ if st.button("Analyze & Search"):
                 else:
                     st.error("No flights found. Try a different date or city!")
 
+            # ... (This is where your container and loop end) ...
+                
             except Exception as e:
-                # If it's an Amadeus error, it will have a 'description' we can read
+                # This handles Amadeus or AI conversion errors
                 if hasattr(e, 'response') and e.response:
                     try:
-                        error_data = e.response.result
-                        st.error(f"Amadeus Says: {error_data['errors'][0]['detail']}")
-                        except:
-                            st.error(f"Engine Error: {e}")
-                    else:
-                        st.error(f"System Error: {e}")
-            
+                        # Try to get the specific reason from Amadeus
+                        error_detail = e.response.result['errors'][0]['detail']
+                        st.error(f"Amadeus Error: {error_detail}")
+                    except:
+                        st.error(f"Engine Error: {e}")
+                else:
+                    st.error(f"System Error: {e}")
+
+        except Exception as outer_e:
+            # This handles any errors outside the main flight search logic
+            st.error(f"Critical Error: {outer_e}")
+
 
 
 
