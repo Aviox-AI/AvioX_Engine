@@ -28,117 +28,127 @@ st.markdown("""
         background-color: #020617;
     }
     
-    /* Full-width Flight Card */
     .flight-card {
-        background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
-        padding: 25px;
-        border-radius: 12px;
+        background: #1e293b;
+        padding: 0px; /* Reset for inner spacing */
+        border-radius: 16px;
         border: 1px solid #334155;
-        margin-bottom: 15px;
+        margin-bottom: 20px;
         color: white;
-        width: 100%;
+        overflow: hidden;
     }
     
-    .flight-card:hover {
-        border-color: #22d3ee;
-        box-shadow: 0 0 20px rgba(34, 211, 238, 0.1);
+    .card-body {
+        padding: 25px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 
-    .filter-box {
-        background-color: #1e293b;
-        padding: 10px;
+    .card-footer {
+        background: rgba(34, 211, 238, 0.05);
+        border-top: 1px solid #334155;
+        padding: 10px 25px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        color: #94a3b8;
+    }
+
+    .stButton>button { 
+        background-color: #22d3ee; 
+        color: #020617; 
+        font-weight: 800; 
         border-radius: 8px;
-        border: 1px solid #334155;
-        text-align: center;
+        border: none;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. NAVBAR (Logo Left, Search Middle) ---
+# --- 3. NAVBAR ---
 nav_col1, nav_col2, nav_col3 = st.columns([1, 3, 1])
-
 with nav_col1:
-    # Small logo top left
-    st.markdown("<h2 style='color: #22d3ee; margin:0;'>AvioX</h2>", unsafe_allow_html=True)
-
+    st.markdown("<h1 style='color: #22d3ee; margin:0; font-size: 2.2rem;'>AvioX</h1>", unsafe_allow_html=True)
 with nav_col2:
-    user_query = st.text_input("", placeholder="Where to? (e.g. London to Paris in June)", label_visibility="collapsed")
-
+    user_query = st.text_input("", placeholder="Try 'London to Paris in April'...", label_visibility="collapsed")
 with nav_col3:
     search_btn = st.button("Search", use_container_width=True)
 
-st.markdown("---")
-
-# --- 4. SEARCH LOGIC ---
-if search_btn and user_query:
-    with st.spinner("Finding the best routes..."):
-        try:
-            # AI conversion
-            simulated_today = "2026-02-02"
-            prompt = f"Convert to JSON: '{user_query}'. Rules: 3-letter IATA, YYYY-MM-DD. Today is {simulated_today}. Return ONLY: {{\"origin\": \"CODE\", \"destination\": \"CODE\", \"date\": \"YYYY-MM-DD\"}}"
-            
+# --- 4. SEARCH & FILTER LOGIC ---
+if user_query:
+    # We create a persistent session state for the flight data so filters don't trigger a re-search
+    if search_btn:
+        with st.spinner("AI Processing..."):
+            sim_date = "2026-02-02"
+            prompt = f"Convert to JSON: '{user_query}'. Rules: 3-letter IATA, YYYY-MM-DD. Today is {sim_date}. Return: {{\"origin\": \"CODE\", \"destination\": \"CODE\", \"date\": \"YYYY-MM-DD\"}}"
             ai_res = ai_client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": prompt}], temperature=0)
-            data = json.loads(ai_res.choices[0].message.content)
-
-            # --- 5. FILTER BAR (Appears after search) ---
-            st.markdown("### Filters & Sorting")
-            f_col1, f_col2, f_col3, f_col4 = st.columns(4)
-            with f_col1:
-                st.selectbox("Stops", ["Non-stop", "1 Stop", "Any"], label_visibility="collapsed")
-            with f_col2:
-                st.selectbox("Sort By", ["Cheapest", "Fastest", "Early Departure"], label_visibility="collapsed")
-            with f_col3:
-                st.selectbox("Airline", ["All Airlines", "British Airways", "United", "Lufthansa"], label_visibility="collapsed")
-            with f_col4:
-                st.write(f"Results for: **{data['origin']} → {data['destination']}**")
-
-            # Amadeus Fetch
-            response = amadeus.shopping.flight_offers_search.get(
-                originLocationCode=data['origin'], destinationLocationCode=data['destination'],
-                departureDate=data['date'], adults=1, max=15
+            st.session_state.search_data = json.loads(ai_res.choices[0].message.content)
+            
+            resp = amadeus.shopping.flight_offers_search.get(
+                originLocationCode=st.session_state.search_data['origin'],
+                destinationLocationCode=st.session_state.search_data['destination'],
+                departureDate=st.session_state.search_data['date'],
+                adults=1, max=20
             )
+            st.session_state.flights = resp.data
 
-            if response.data:
-                st.balloons()
-                
-                # --- 6. FLIGHT RESULTS (Full Width) ---
-                for flight in response.data:
-                    price = flight['price']['total']
-                    curr = flight['price']['currency']
-                    airline = flight['validatingAirlineCodes'][0]
-                    itinerary = flight['itineraries'][0]
-                    dep = itinerary['segments'][0]['departure']['at'][11:16]
-                    arr = itinerary['segments'][-1]['arrival']['at'][11:16]
-                    dur = itinerary['duration'][2:].lower().replace('h', 'h ').replace('m', 'm')
+    if 'flights' in st.session_state:
+        # --- FILTER BAR ---
+        st.markdown("### Refine Results")
+        f1, f2, f3 = st.columns([1, 1, 2])
+        with f1:
+            sort_opt = st.selectbox("Sort By", ["Cheapest", "Highest Price"])
+        with f2:
+            stops_opt = st.selectbox("Stops", ["All", "Non-stop Only"])
+        with f3:
+            st.write(f"Showing flights for **{st.session_state.search_data['origin']} → {st.session_state.search_data['destination']}**")
 
-                    # Design: Full Width Card
-                    st.markdown(f"""
-                        <div class="flight-card">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div style="display: flex; align-items: center; gap: 20px; flex: 1;">
-                                    <img src="https://assets.duffel.com/img/airlines/for-light-background/full-color-lockup/{airline.upper()}.svg" width="100" style="background:white; padding:5px; border-radius:5px;" onerror="this.src='https://img.icons8.com/clouds/100/airplane-take-off.png'">
-                                    <div>
-                                        <div style="font-size: 0.8rem; color: #94a3b8;">Airline</div>
-                                        <div style="font-weight: bold; color: #22d3ee;">{airline}</div>
-                                    </div>
-                                </div>
-                                <div style="flex: 2; text-align: center;">
-                                    <div style="font-size: 2rem; font-weight: 800;">{dep} &rarr; {arr}</div>
-                                    <div style="color: #94a3b8;">{dur} | Non-stop</div>
-                                </div>
-                                <div style="flex: 1; text-align: right;">
-                                    <div style="font-size: 2rem; font-weight: 800; color: #22d3ee;">{price} <span style="font-size: 1rem;">{curr}</span></div>
-                                    <div style="font-size: 0.7rem; color: #94a3b8;">Incl. taxes & fees</div>
-                                </div>
-                            </div>
+        # --- APPLY PYTHON FILTERS ---
+        display_flights = st.session_state.flights
+
+        # Filter by Stops
+        if stops_opt == "Non-stop Only":
+            display_flights = [f for f in display_flights if len(f['itineraries'][0]['segments']) == 1]
+
+        # Sort
+        if sort_opt == "Cheapest":
+            display_flights = sorted(display_flights, key=lambda x: float(x['price']['total']))
+        else:
+            display_flights = sorted(display_flights, key=lambda x: float(x['price']['total']), reverse=True)
+
+        # --- 5. RESULTS DISPLAY ---
+        for flight in display_flights:
+            price = flight['price']['total']
+            curr = flight['price']['currency']
+            airline = flight['validatingAirlineCodes'][0]
+            itinerary = flight['itineraries'][0]
+            stops = len(itinerary['segments']) - 1
+            stop_txt = "Non-stop" if stops == 0 else f"{stops} Stop(s)"
+            
+            dep = itinerary['segments'][0]['departure']['at'][11:16]
+            arr = itinerary['segments'][-1]['arrival']['at'][11:16]
+            dur = itinerary['duration'][2:].lower().replace('h', 'h ').replace('m', 'm')
+
+            st.markdown(f"""
+                <div class="flight-card">
+                    <div class="card-body">
+                        <div style="flex: 1;">
+                            <img src="https://assets.duffel.com/img/airlines/for-light-background/full-color-lockup/{airline.upper()}.svg" width="120" style="background:white; padding:8px; border-radius:8px;">
                         </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Full width button under card
-                    if st.button(f"Book {airline} for {price} {curr}", key=f"btn_{flight['id']}", use_container_width=True):
-                        st.success("Redirecting to checkout...")
-            else:
-                st.error("No flights found.")
-
-        except Exception as e:
-            st.error(f"Search Error: {e}")
+                        <div style="flex: 2; text-align: center;">
+                            <span style="font-size: 2.2rem; font-weight: 800; letter-spacing: -1px;">{dep} &rarr; {arr}</span>
+                        </div>
+                        <div style="flex: 1; text-align: right;">
+                            <span style="font-size: 2.2rem; font-weight: 800; color: #22d3ee;">{price} <small style="font-size: 1rem;">{curr}</small></span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <span>🕒 Duration: <b>{dur}</b></span>
+                        <span>✈️ <b>{stop_txt}</b></span>
+                        <span style="color: #22d3ee; font-weight: bold;">{airline} Flight</span>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button(f"Select Flight {flight['id']}", key=f"btn_{flight['id']}", use_container_width=True):
+                st.success(f"Confirming {airline} flight for {price} {curr}...")
