@@ -127,7 +127,16 @@ if st.button("Analyze & Search"):
                     st.error("No flights found. Try a different date or city!")
 
             except Exception as e:
-                st.error(f"Engine Error: {type(e).__name__} - {e}")
+                # If it's an Amadeus error, it will have a 'description' we can read
+                if hasattr(e, 'response') and e.response:
+                    try:
+                        error_data = e.response.result
+                        st.error(f"Amadeus Says: {error_data['errors'][0]['detail']}")
+                        except:
+                            st.error(f"Engine Error: {e}")
+                    else:
+                        st.error(f"System Error: {e}")
             
+
 
 
