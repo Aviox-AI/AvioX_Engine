@@ -23,12 +23,20 @@ st.set_page_config(page_title="AvioX AI", page_icon="✈️", layout="centered")
 # Custom Styling
 st.markdown("""
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+        background-color: #020617;
+    }
     .main { background-color: #020617; }
     .stButton>button { 
         background-color: #22d3ee; 
         color: #020617; 
         font-weight: bold; 
-        border-radius: 10px; 
+        border-radius: 10px;
+        border: none;
+        height: 3rem;
     }
     .flight-card {
         background-color: #1e293b;
@@ -37,6 +45,11 @@ st.markdown("""
         border: 1px solid #334155;
         margin-bottom: 20px;
         color: white;
+        transition: transform 0.2s;
+    }
+    .flight-card:hover {
+        transform: translateY(-5px);
+        border-color: #22d3ee;
     }
     .airline-logo {
         border-radius: 8px;
@@ -46,48 +59,32 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Centered Header with a cleaner look
+# Header Section
 st.markdown("""
-    <div class="flight-card" style="box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: transform 0.2s;">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div style="flex: 1; display: flex; flex-direction: column; align-items: flex-start;">
-            <img class="airline-logo" src="https://assets.duffel.com/img/airlines/for-light-background/full-color-lockup/{airline.upper()}.svg" width="100" style="background: white; padding: 8px; border-radius: 8px;" onerror="this.src='https://img.icons8.com/clouds/100/airplane-take-off.png'">
-            <span style="margin-top: 8px; font-weight: bold; letter-spacing: 1px; color: #38bdf8;">{airline}</span>
-        </div>
-
-        <div style="flex: 2; text-align: center;">
-            <div style="font-size: 1.8rem; font-weight: 700; color: #f8fafc;">
-                {dep_time} <span style="color: #22d3ee; font-size: 1.2rem;">✈</span> {arr_time}
-            </div>
-            <div style="background: #334155; display: inline-block; padding: 2px 12px; border-radius: 20px; font-size: 0.8rem; color: #cbd5e1; margin-top: 5px;">
-                {duration} | Direct
-            </div>
-        </div>
-
-        <div style="flex: 1; text-align: right;">
-            <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase;">Best Price</div>
-            <div style="font-size: 2rem; font-weight: 800; color: #22d3ee;">{price} <span style="font-size: 1rem;">{currency}</span></div>
-        </div>
+    <div style="text-align: center; padding: 20px 0px;">
+        <h1 style="color: #22d3ee; font-size: 3rem; margin-bottom: 0;">AvioX AI</h1>
+        <p style="color: #94a3b8; font-size: 1.2rem;">Next-Gen Flight Intelligence</p>
     </div>
-</div>
+""", unsafe_allow_html=True)
 
-user_query = st.text_input("Where to?", placeholder="e.g. London to Tokyo next August")
+# Input Section
+user_query = st.text_input("", placeholder="Where would you like to fly? (e.g. London to JFK in March)", label_visibility="collapsed")
 
-if st.button("Analyze & Search"):
+if st.button("Search Flights", use_container_width=True):
     if not user_query:
         st.warning("Please enter a destination!")
     else:
-        with st.spinner("AI is converting your request to flight data..."):
+        with st.spinner("Analyzing route and fetching prices..."):
             try:
                 # --- 3. THE AI BRAIN ---
-                # This gets the actual date from the server clock
-                current_date = datetime.now().strftime("%Y-%m-%d") 
+                # We use 2026 to stay within Amadeus Test Tier's valid range
+                simulated_today = "2026-02-02" 
                 prompt = f"""
                 Convert this request to JSON: '{user_query}'
                 Rules:
                 1. 'origin' and 'destination' must be 3-letter IATA codes.
                 2. 'date' must be YYYY-MM-DD. 
-                3. Today is {current_date}.
+                3. Today is {simulated_today}.
                 Return ONLY JSON: {{"origin": "CODE", "destination": "CODE", "date": "YYYY-MM-DD"}}
                 """
                 
@@ -97,9 +94,8 @@ if st.button("Analyze & Search"):
                     temperature=0
                 )
                 
-                ai_content = ai_response.choices[0].message.content
-                data = json.loads(ai_content)
-                st.info(f"Searching: {data['origin']} to {data['destination']} on {data['date']}")
+                data = json.loads(ai_response.choices[0].message.content)
+                st.info(f"📍 {data['origin']} to {data['destination']} | 📅 {data['date']}")
 
                 # --- 4. THE FLIGHT ENGINE (AMADEUS) ---
                 response = amadeus.shopping.flight_offers_search.get(
@@ -112,10 +108,9 @@ if st.button("Analyze & Search"):
 
                 if response.data:
                     st.balloons()
-                    st.markdown(f"### ✈️ Found {len(response.data)} Flights")
                     
                     # --- 5. SCROLLABLE RESULTS ---
-                    with st.container(height=500):
+                    with st.container(height=600):
                         for flight in response.data:
                             price = flight['price']['total']
                             currency = flight['price']['currency']
@@ -131,23 +126,24 @@ if st.button("Analyze & Search"):
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
                                         <div style="flex: 1;">
                                             <img class="airline-logo" src="https://assets.duffel.com/img/airlines/for-light-background/full-color-lockup/{airline.upper()}.svg" width="80" onerror="this.src='https://img.icons8.com/clouds/100/airplane-take-off.png'">
-                                            <p style="margin: 5px 0 0 0; color: #94a3b8; font-size: 0.8rem;">{airline}</p>
+                                            <p style="margin: 5px 0 0 0; color: #94a3b8; font-weight: bold;">{airline}</p>
                                         </div>
                                         <div style="flex: 2; text-align: center;">
-                                            <h2 style="margin: 0; font-size: 1.5rem;">{dep_time} ➔ {arr_time}</h2>
-                                            <p style="margin: 0; color: #22d3ee;">{duration} | Non-stop</p>
+                                            <h2 style="margin: 0; font-size: 1.8rem; color: #f8fafc;">{dep_time} &rarr; {arr_time}</h2>
+                                            <p style="margin: 0; color: #22d3ee; font-size: 0.9rem;">{duration} | Direct</p>
                                         </div>
                                         <div style="flex: 1; text-align: right;">
-                                            <h3 style="margin: 0; color: white;">{price} {currency}</h3>
+                                            <p style="margin: 0; color: #94a3b8; font-size: 0.7rem; text-transform: uppercase;">Best Price</p>
+                                            <h2 style="margin: 0; color: #22d3ee;">{price} <span style="font-size: 1rem;">{currency}</span></h2>
                                         </div>
                                     </div>
                                 </div>
                             """, unsafe_allow_html=True)
                             
-                            if st.button(f"Select {airline} flight", key=f"btn_{flight['id']}"):
-                                st.success(f"Selected flight for {price} {currency}!")
+                            if st.button(f"Select {airline} Flight", key=f"btn_{flight['id']}", use_container_width=True):
+                                st.success(f"Selected! Price: {price} {currency}")
                 else:
-                    st.error("No flights found. Try a different date or city!")
+                    st.error("No flights found for this route on this date.")
 
             except Exception as e:
                 if hasattr(e, 'response') and e.response:
@@ -158,5 +154,3 @@ if st.button("Analyze & Search"):
                         st.error(f"Engine Error: {e}")
                 else:
                     st.error(f"System Error: {e}")
-
-
